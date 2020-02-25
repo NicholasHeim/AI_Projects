@@ -1,10 +1,11 @@
-Set up nodes for priority queue
-Set up manhattan priority function (vert + horiz + moves) DONE
-Set up priority queue   DONE
+Set up nodes for priority queue                                DONE
+Set up manhattan priority function (vert + horiz + moves)      DONE
+Set up priority queue                                          DONE
 Insert initial state into it with no previous state and 0
-   moves taken to get to that state. DONE
+   moves taken to get to that state.                           DONE
 Dequeue the node in the queue with the lowest priority and 
    insert neighboring nodes into priority queue (one move away)
-   ignoring the previous state
-Determine which states to add to the priority queue 
+   ignoring the previous state                                 DONE
+Determine which states to add to the priority queue            DONE
 Repeat until the dequeued state is the goal state.
+Function decorator

@@ -1,11 +1,9 @@
 """
    Author: Nicholas Heim
    Email: nwh8@zips.uakron.edu
-   Purpose: To find a sequence of moves to solve an 8 puzzle game given an initial and final
-            configuration. 
+   Purpose: To find a sequence of moves to solve an 8 puzzle game 
+            given an initial and final configuration. 
 """
-
-
 import time as t
 
 def write_step(state, file):
@@ -60,11 +58,12 @@ class State:
 
 # Min priority queue. Meant to organize based on the value of the heuristic
 class PriorityQueue:
-   def __init__(self, state):
+   def __init__(self, state, end):
       self.queue = []
       self.queue.append(state)
+      self.end = end
    
-   def isEmpty(self):
+   def is_empty(self):
       return len(self.queue) == []
 
    def enqueue(self, state):
@@ -79,6 +78,10 @@ class PriorityQueue:
       del self.queue[min]
       for i in self.moves(temp.state, temp.previous):
          self.enqueue(State(i, temp.moves + 1, temp.state))
+      
+      if self.end_check(temp):
+         pass
+      
       return temp
 
    def m_dequeue(self):
@@ -135,6 +138,13 @@ class PriorityQueue:
             if (swap(state, 4, i)) != prev:
                moves.append(swap(state, 4, i))
       return moves
+   
+   def end_check(self, state):
+      for i, j in state.state, self.end:
+         if i != j:
+            return 0
+      # Return of 1 is a replacement for true, saying that they are the same
+      return 1
 
 def n_puzzle():
    # Get the initial inputs for the program and open the file. This includes the 
@@ -144,14 +154,11 @@ def n_puzzle():
    end = list(map(int, input("\nEnter the final state: ").strip().split()))
    result = open("8puzzlelog.txt", mode='w')
    write_step(start, result)
-   # Do not calculate the heuristic for this one, as it is the start. 
-   temp = State(start, 0, start)
 
    # Start of the heuristic solution. Metric: Hamming distance. 
-
    t0 = t.time()
-   pq = PriorityQueue(State(start, 0, start))
-
+   pq = PriorityQueue(State(start, 0, start), end)
+   
 
    
    t1 = t.time()
