@@ -40,7 +40,7 @@ class State:
             sum += 1
       self.heur = sum + self.moves
 
-   def calc_dfs(self):
+   def calc_bfs(self):
       self.heur = self.moves
 
    # Using manhattan distance + moves for the heuristic
@@ -99,7 +99,7 @@ class PriorityQueue:
       return rem
 
    # Note: 
-   def d_dequeue(self):
+   def b_dequeue(self):
       min = 0
       for i in range(len(self.queue)):
          if self.queue[i].heur < self.queue[min].heur:
@@ -111,7 +111,7 @@ class PriorityQueue:
 
       for i in self.moves(rem.state, rem.previous[len(rem.previous) - 2]):
          temp = State(i, rem.moves + 1, rem.previous)
-         temp.calc_dfs()
+         temp.calc_bfs()
          self.queue.append(temp)
       return rem
 
@@ -191,15 +191,15 @@ def n_puzzle():
    #start = [1, 2, 3, 4, 5, 6, 8, 7, 0]
    #end = [1, 2, 3, 4, 5, 6, 7, 8, 0]
 
-   # Start of the brute force method using depth first search and additional
+   # Start of the brute force method using breadth first search and additional
    # functions within the priority queue. These will be used here.
    # Note: The moves will not be output until the end of the 
    # heuristic solution to allow for a more ccurate comparison of times. 
    t0 = t.time()
    pq = PriorityQueue(State(start, 0, []), end)
-   removed = pq.d_dequeue()
+   removed = pq.b_dequeue()
    while (pq.done == False) and (not pq.is_empty()) and (removed.moves < 32):
-      removed = pq.d_dequeue()
+      removed = pq.b_dequeue()
 
    result.write("Non-Heuristic Time: " + (str)(t.time() - t0) + '\n')
    result.write("Non-Heuristic Moves: " + (str)(removed.moves) + "\n\n")
