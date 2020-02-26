@@ -21,14 +21,16 @@ class State:
       self.state = state_
       self.moves = moves_
       self.previous = previous_
+      self.hamm = 0
    
    # Using hamming distance + moves for the heuristic
    def calc_ham(self, end):
       sum = 0
-      for i, j in self.state, end:
-         if (i == j):
+      for i, j in zip(self.state, end):
+         if (i != j):
             sum += 1
       self.hamm = sum + self.moves
+
 
    # Using manhattan distance + moves for the heuristic
    def calc_man(self, end):
@@ -53,8 +55,8 @@ class State:
       sum = 0
       for i in vals:
          sum += i
-      
       self.man = sum + self.moves
+
 
 # Min priority queue. Meant to organize based on the value of the heuristic
 class PriorityQueue:
@@ -62,6 +64,7 @@ class PriorityQueue:
       self.queue = []
       self.queue.append(state)
       self.end = end
+      self.done = False
    
    def is_empty(self):
       return len(self.queue) == []
@@ -74,15 +77,17 @@ class PriorityQueue:
       for i in range(len(self.queue)):
          if self.queue[i].hamm < self.queue[min].hamm:
             min = i
-      temp = self.queue[min]
+      
+      rem = self.queue[min]
+      self.end_check(rem)
       del self.queue[min]
-      for i in self.moves(temp.state, temp.previous):
-         self.enqueue(State(i, temp.moves + 1, temp.state))
-      
-      if self.end_check(temp):
-         pass
-      
-      return temp
+
+      for i in self.moves(rem.state, rem.previous):
+         temp = State(i, rem.moves + 1, rem.state)
+         temp.calc_ham(self.end)
+         self.queue.append(temp)
+      return rem
+
 
    def m_dequeue(self):
       min = 0
@@ -92,6 +97,7 @@ class PriorityQueue:
          temp = self.queue[min]
          del self.queue[min]
          return temp
+
 
    def moves(self, state, prev):
       moves = []
@@ -140,28 +146,38 @@ class PriorityQueue:
       return moves
    
    def end_check(self, state):
-      for i, j in state.state, self.end:
+      for i, j in zip(state.state, self.end):
          if i != j:
-            return 0
-      # Return of 1 is a replacement for true, saying that they are the same
-      return 1
+            return
+      self.done = True
 
 def n_puzzle():
    # Get the initial inputs for the program and open the file. This includes the 
    # initial and final states of the board. This should be the only required input.
    # It is expected that the user knows that the numbers 0-8 are used as inputs.
-   start = list(map(int, input("\nEnter the initial state: ").strip().split()))
-   end = list(map(int, input("\nEnter the final state: ").strip().split()))
+   #start = list(map(int, input("\nEnter the initial state: ").strip().split()))
+   #end = list(map(int, input("\nEnter the final state: ").strip().split()))
    result = open("8puzzlelog.txt", mode='w')
-   write_step(start, result)
+
+   #end = [1, 2, 3, 4, 5, 6, 7, 8, 0]
+   #start = [1, 2, 3, 4, 6, 0, 7, 5, 8]
+   #start = [0, 1, 3, 4, 2, 5, 7, 8, 6]
+   start = [1, 2, 3, 4, 5, 6, 8, 7, 0]
+   end = [1, 2, 3, 4, 5, 6, 7, 8, 0]
+
 
    # Start of the heuristic solution. Metric: Hamming distance. 
    t0 = t.time()
    pq = PriorityQueue(State(start, 0, start), end)
    
-
+   removed = 0
+   while pq.done == False:
+      removed = pq.h_dequeue()
+      write_step(removed.state, result)
    
    t1 = t.time()
    tFinal = t1 - t0
-   result.write(tFinal)
+   print(tFinal)
    result.close()
+
+n_puzzle()
