@@ -6,10 +6,17 @@
 """
 import time as t
 
-def write_step(state, file):
-   for i in [0,1,2]:
-      file.write('%-1s' % state[3*i:3*(i+1)] + '\n')
-   file.write('\n')
+# Changing the recall as a list, need to change: 
+# write_step
+# State.init
+# PriorityQueue.h_dequeue
+
+def write_step(stateList, file):
+   file.write("\nMoves to solution:\n\n")
+   for i in stateList:
+      for j in [0, 1, 2]:
+         file.write('%-1s' % i[3*j:3*(j+1)] + '\n')
+      file.write('\n')
 
 def swap(list, pos1, pos2):
     temp = list[:]
@@ -17,11 +24,13 @@ def swap(list, pos1, pos2):
     return temp
 
 class State:
-   def __init__(self, state_, moves_, previous_):
-      self.state = state_
-      self.moves = moves_
-      self.previous = previous_
-      self.hamm = 0
+   def __init__(self, state, moves, previous):
+      self.state = state
+      self.moves = moves
+      self.previous = []
+      self.previous.extend(previous)
+      self.previous.append(self.state)
+      self.heur = 0
    
    # Using hamming distance + moves for the heuristic
    def calc_ham(self, end):
@@ -29,8 +38,10 @@ class State:
       for i, j in zip(self.state, end):
          if (i != j):
             sum += 1
-      self.hamm = sum + self.moves
+      self.heur = sum + self.moves
 
+   def calc_bfs(self):
+      self.heur = self.moves
 
    # Using manhattan distance + moves for the heuristic
    def calc_man(self, end):
@@ -57,37 +68,52 @@ class State:
          sum += i
       self.man = sum + self.moves
 
-
 # Min priority queue. Meant to organize based on the value of the heuristic
 class PriorityQueue:
-   def __init__(self, state, end):
+   def __init__(self, State, end):
       self.queue = []
-      self.queue.append(state)
+      self.queue.append(State)
       self.end = end
       self.done = False
    
    def is_empty(self):
       return len(self.queue) == []
 
-   def enqueue(self, state):
-      self.queue.append(state)
+   def enqueue(self, State):
+      self.queue.append(State)
 
    def h_dequeue(self):
       min = 0
       for i in range(len(self.queue)):
-         if self.queue[i].hamm < self.queue[min].hamm:
+         if self.queue[i].heur < self.queue[min].heur:
             min = i
       
       rem = self.queue[min]
       self.end_check(rem)
       del self.queue[min]
 
-      for i in self.moves(rem.state, rem.previous):
-         temp = State(i, rem.moves + 1, rem.state)
+      for i in self.moves(rem.state, rem.previous[len(rem.previous) - 2]):
+         temp = State(i, rem.moves + 1, rem.previous)
          temp.calc_ham(self.end)
          self.queue.append(temp)
       return rem
 
+   # Note: 
+   def b_dequeue(self):
+      min = 0
+      for i in range(len(self.queue)):
+         if self.queue[i].heur < self.queue[min].heur:
+            min = i
+      
+      rem = self.queue[min]
+      self.end_check(rem)
+      del self.queue[min]
+
+      for i in self.moves(rem.state, rem.previous[len(rem.previous) - 2]):
+         temp = State(i, rem.moves + 1, rem.previous)
+         temp.calc_bfs()
+         self.queue.append(temp)
+      return rem
 
    def m_dequeue(self):
       min = 0
@@ -97,7 +123,6 @@ class PriorityQueue:
          temp = self.queue[min]
          del self.queue[min]
          return temp
-
 
    def moves(self, state, prev):
       moves = []
@@ -155,29 +180,46 @@ def n_puzzle():
    # Get the initial inputs for the program and open the file. This includes the 
    # initial and final states of the board. This should be the only required input.
    # It is expected that the user knows that the numbers 0-8 are used as inputs.
-   #start = list(map(int, input("\nEnter the initial state: ").strip().split()))
-   #end = list(map(int, input("\nEnter the final state: ").strip().split()))
+   start = list(map(int, input("\nEnter the initial state: ").strip().split()))
+   end = list(map(int, input("\nEnter the final state: ").strip().split()))
    result = open("8puzzlelog.txt", mode='w')
 
-   #end = [1, 2, 3, 4, 5, 6, 7, 8, 0]
+   # Hard coded testing cases, last one is one with no solution.
    #start = [1, 2, 3, 4, 6, 0, 7, 5, 8]
    #start = [0, 1, 3, 4, 2, 5, 7, 8, 6]
-   start = [1, 2, 3, 4, 5, 6, 8, 7, 0]
-   end = [1, 2, 3, 4, 5, 6, 7, 8, 0]
+   #start = [1, 2, 3, 4, 5, 6, 7, 0, 8]
+   #start = [1, 2, 3, 4, 5, 6, 8, 7, 0]
+   #end = [1, 2, 3, 4, 5, 6, 7, 8, 0]
 
-
-   # Start of the heuristic solution. Metric: Hamming distance. 
+   # Start of the brute force method using breadth first search and additional
+   # functions within the priority queue. These will be used here.
+   # Note: The moves will not be output until the end of the 
+   # heuristic solution to allow for a more ccurate comparison of times. 
    t0 = t.time()
-   pq = PriorityQueue(State(start, 0, start), end)
+   pq = PriorityQueue(State(start, 0, []), end)
+   removed = pq.b_dequeue()
+   while (pq.done == False) and (not pq.is_empty()) and (removed.moves < 32):
+      removed = pq.b_dequeue()
+
+   result.write("Non-Heuristic Time: " + (str)(t.time() - t0) + '\n')
+   result.write("Non-Heuristic Moves: " + (str)(removed.moves) + "\n\n")
    
-   removed = 0
-   while pq.done == False:
+
+   # Start of the heuristic solution. Metric: hamming distance. 
+   t0 = t.time()
+   pq = PriorityQueue(State(start, 0, []), end)
+   
+   removed = pq.h_dequeue()
+   while (pq.done == False) and (not pq.is_empty()) and (removed.moves < 32):
       removed = pq.h_dequeue()
-      write_step(removed.state, result)
-   
-   t1 = t.time()
-   tFinal = t1 - t0
-   print(tFinal)
+
+   result.write("Heuristic Time: " + (str)(t.time() - t0) + '\n')
+   result.write("Heuristic Moves: " + (str)(removed.moves) + '\n')
+
+   write_step(removed.previous, result)
    result.close()
 
 n_puzzle()
+
+# Look at corountine()
+# condition variable for multithreading
