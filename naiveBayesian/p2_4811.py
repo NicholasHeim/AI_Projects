@@ -77,7 +77,7 @@ def save(fileName):
 
 
    
-   pass
+   file.close()
 
 def load():
    fileName = input(("Enter the name of the model file excluding the extension:\n"
@@ -86,6 +86,7 @@ def load():
 
    df = pd.read_csv(input(("Enter the name of the data file excluding the extension:\n"
       "Note: The extension is assumed to be .csv\n")))
+   
    
 
    pass
