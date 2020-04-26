@@ -4,53 +4,53 @@
    Purpose: Learn naive Batesian classifiers
 """
 
-# TODO: Comment 
-
 import matplotlib.pyplot as plt
 import seaborn as sn
 import pandas as pd
 import numpy as np
+import copy as cp
 import array
 import io
 
 """
-   NOTE: I do not claim authorship of lines 19-58. These are attributed to Dr. Chan
+   NOTE: I do not claim authorship of lines 19-59. These are attributed to Dr. Chan
    At the University of Akron. All else I claim.
 """
 
 #represent frequency count of one feature as a DataFrame
 def freq(x, opt='DataFrame'):
-    """ x is a Series
-        it returns a DataFrame (by default) indexed by unique values of x and
-        their frequency counts
-    """
-    if opt != 'DataFrame':
-        if opt == 'dict':
-            return { i: x.value_counts()[i] for i in x.unique()}
-        else:
-            return (x.name, { i: x.value_counts()[i] for i in x.unique()})
-    return pd.DataFrame([x.value_counts()[i] for i in x.unique()], index=x.unique(), columns=[x.name])
+   """ 
+      x is a Series
+      it returns a DataFrame (by default) indexed by unique values of x and
+      their frequency counts
+   """
+   if opt != 'DataFrame':
+      if opt == 'dict':
+         return { i: x.value_counts()[i] for i in x.unique()}
+      else:
+         return (x.name, { i: x.value_counts()[i] for i in x.unique()})
+   return pd.DataFrame([x.value_counts()[i] for i in x.unique()], index=x.unique(), columns=[x.name])
 
 #How to create multi-index objects?
 #Use  groupby()
 def cond_p(df, c, d):
-    """ compute p(d|c)
-        represented as a dict
-        df is a DataFrame with columns c and d
-        c and d are column names
-    """
-    C = df.groupby(c).groups
-    D = df.groupby(d).groups
-    P_DC = { (i, j): (C[i] & D[j]).size / C[i].size
-                 for i in C.keys() for j in D.keys()}
-    
-    return P_DC  #returns P(d|c) as a dict
+   """ 
+      compute p(d|c)
+      represented as a dict
+      df is a DataFrame with columns c and d
+      c and d are column names
+   """
+   C = df.groupby(c).groups
+   D = df.groupby(d).groups
+   P_DC = { (i, j): (C[i] & D[j]).size / C[i].size
+               for i in C.keys() for j in D.keys()}
+   
+   return P_DC  #returns P(d|c) as a dict
 
 def inverse_p(df, cond_list, decision_list):
-    """ Build a list of dict of inverse probabilities
-    """
-    p_list = [cond_p(df, decision_list, i) for i in cond_list] #build a list of dicts
-    return p_list
+   #Build a list of dict of inverse probabilities 
+   p_list = [cond_p(df, decision_list, i) for i in cond_list] #build a list of dicts
+   return p_list
 
 def bayes_model(df):
     cond_list = df.columns[:-1]  #get the list of condition attributes
@@ -69,6 +69,37 @@ def menu():
       "5. Exit the program.\n"
       "Please choose either 1 or 3 first, as there is no error checking in 2 and 4 currently.\n"))
 
+def parse(data):
+   model = []
+   for i in range(data.count('{')):
+      model.append(data[data.find('{') + 1 : data.find('}')] + ',')
+      data = data[data.find('}') + 1:]
+
+   data = {}
+   for i in range(len(model)):
+      for j in range(model[i].count('(')):
+         a = model[i][1: model[i].find(',')]
+         b = model[i][model[i].find(',') + 2: model[i].find(')')]
+         if str(a).find('\'') != -1:
+            a = a[1:-1]
+         elif a == 'True' or a == 'False': pass
+         else:
+            a = int(a)
+         
+         if str(b).find('\'') != -1:
+            b = b[1:-1]
+         elif b == 'True' or b == 'False': pass
+         else:
+            b = int(b)
+         
+         tempTup = (a, b)
+         prob = float(model[i][model[i].find(':') + 2: model[i].find(',', model[i].find(':'))])
+         data[tempTup] = prob
+         model[i] = model[i][model[i].find(',', model[i].find(':')) + 2 : ]
+      model[i] = data;
+      data = {}
+   return model
+
 class Node:
    # position will give the position in options the next level was taken from
    def __init__(self, splitWidth, options, probabilities, position):
@@ -79,7 +110,6 @@ class Node:
          # Left and right refer to the decision values, left being first, right second
          self.leftProb = float(probabilities[0][position])
          self.rightProb = float(probabilities[0][int(position + (len(probabilities[0]) / 2))])
-
 
          # Check to see if this is a leaf node:
          # Note, should not ever actually be < 1
@@ -122,49 +152,17 @@ def test(head, data):
    return left, right
 
 def constructTree(model):
-   # Seperate the model data into the rows it will be in by legal {} placements
-   # model will be a string of the model data
-   model = str(model)
-   data = []
-   splitWidth = []
-   options = []
-   probabilities = []
-   for i in range(model.count('{')):
-      start = model.find('{')
-      end = model.find('}')
-      data.append(model[start + 1:end + 1])
-      model = model[end + 1:]
+   modelC = cp.deepcopy(model)
+   splitWidth = [int(len(modelC[i])/2) for i in range(len(modelC))]
+   # Make the data easier to work with; assuming keys are unknown
+   data = [[modelC[i].popitem() for j in range(len(modelC[i]))] for i in range(len(modelC))]
 
-      # First string in parenthesis is the decision variable, ASSUMED BINARY
-      splitWidth.append(data[i].count(data[i][1 : data[i].find("'", 2) + 1]))
-      
-      # Gather options for each level of the tree
-      # trashData is used to avoid losing the last characters in the sliced string
-      temp = []
-      trashData = data[i][:]
-      for j in range(splitWidth[i]):
-         temp.append(trashData[trashData.find(',') + 2 : trashData.find(')')])
-         temp[j] = temp[j].replace("'", "")
-         trashData = trashData[trashData.find(',', trashData.find(':')) + 2 :]
-      
-      options.append(temp)
-      
-      # Pull out the probabilities for each value.
-      temp = []
-      trashData = data[i][:]
-      for j in range((2 * splitWidth[i]) - 1):
-         temp.append(float(trashData[trashData.find(':') + 1 : trashData.find(',', trashData.find(':'))]))
-         trashData = trashData[trashData.find(',', trashData.find(':')) + 2 :]
+   decision = list(np.unique([data[0][i][0][0] for i in range(len(data[0]))]))
+   options = [[data[i][j][0][1] for j in range(len(data[i]))] for i in range(len(data))]
+   options = [list(np.unique(options[i])) for i in range(len(options))]
+   options.append(decision)
 
-      temp.append(float(data[i][data[i].rfind(':') + 1 : data[i].find('}')]))
-      probabilities.append(temp)
-   
-   # Adding the decision values into the last spot in options
-   temp = []
-   temp.append(data[0][2 : data[0].find("'", 2)])
-   temp.append(data[0][data[0].rfind("(") + 2 : data[0].rfind(',') - 1])
-   options.append(temp)
-
+   probabilities = [[data[i][j][1] for j in range(len(data[i]))] for i in range(len(data))]
    # At this point, the data is ready to be fed into the tree.
    # Need splitWidth, options, probabilities, position = -1
    return (Node(splitWidth, options[:-1], probabilities, -1), options[-1:][0])
@@ -172,12 +170,12 @@ def constructTree(model):
 def learn():
    fileName = input(("\nEnter the name of the data file excluding the extension:\n"
       "Note: The extension is assumed to be .csv\n"))
-   c_list = bayes_model(pd.read_csv(fileName + ".csv"))
+   model = bayes_model(pd.read_csv(fileName + ".csv"))
 
    # Generate the model tree
-   head, decisions = constructTree(c_list)
+   head, decisions = constructTree(model)
    print(("Naive Bayesian model learned.\n"))
-   return (c_list, fileName, head, decisions)
+   return (model, fileName, head, decisions)
 
 def save(fileName, model):
    file = open(fileName + ".bin", "wb")
@@ -189,10 +187,7 @@ def load():
    fileName = input(("\nEnter the name of the model file excluding the extension:\n"
       "Note: The extension is assumed to be .bin\n"))
    file = open(fileName + ".bin", "rb")
-
-   model = file.read()
-   model = model.decode('ascii')
-
+   model = parse((file.read()).decode('ascii'))
    head, decisions = constructTree(model)
 
    df = pd.read_csv(input(("\nEnter the name of the data file for testing, exclude the extension:\n"
@@ -220,9 +215,8 @@ def load():
    file.close()
 
    # Construction of the confusion matrix
-   df = {'Actual':      actual,
-         'Predicted':   predicted   }
-
+   df = {'Actual':    actual,
+         'Predicted': predicted}
    df = pd.DataFrame(df, columns=['Actual', 'Predicted'])
    df['Actual'] = df['Actual'].map({decisions[0]: 0, decisions[1]: 1})
    df['Predicted'] = df['Predicted'].map({decisions[0]: 0, decisions[1]: 1})
@@ -284,4 +278,4 @@ def py_nb():
       elif option == 5:
          raise SystemExit
 
-py_nb()
+#py_nb()
